@@ -10,161 +10,265 @@ class CreatePlanScreen extends StatefulWidget {
 }
 
 class _CreatePlanScreenState extends State<CreatePlanScreen> {
-  final titleController = TextEditingController();
-  final descriptionController = TextEditingController();
-  final locationController = TextEditingController();
-  DateTime? selectedDateTime;
-  String? selectedVibe;
-  int maxSize = 5;
-  bool isLoading = false;
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  final _locationController = TextEditingController();
+  DateTime? _selectedDateTime;
+  String? _selectedVibe;
+  int _maxSize = 5;
+  bool _isLoading = false;
   final supabase = Supabase.instance.client;
 
-  final vibes = ['Chill', 'Party', 'Study', 'Adventure', 'Food', 'Sports'];
+  final _vibes = ['Chill', 'Party', 'Study', 'Adventure', 'Food', 'Sports'];
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
-      context: context, initialDate: DateTime.now(),
-      firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)),
+      context: context,
+      initialDate: DateTime.now().add(const Duration(hours: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppColors.accent, onPrimary: Colors.white)),
+        child: child!,
+      ),
     );
-    if (date == null) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context, initialTime: TimeOfDay.now(),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppColors.accent)),
+        child: child!,
+      ),
+    );
     if (time == null) return;
-    setState(() => selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    setState(() => _selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
-  Future<void> createPlan() async {
-    if (titleController.text.trim().isEmpty || locationController.text.trim().isEmpty || selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Fill all required fields'), backgroundColor: AppColors.accent, behavior: SnackBarBehavior.floating),
-      );
-      return;
-    }
-    setState(() => isLoading = true);
+  String _formatDt() {
+    if (_selectedDateTime == null) return 'Pick a date & time';
+    final d = _selectedDateTime!;
+    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final hour = d.hour;
+    final min = d.minute.toString().padLeft(2,'0');
+    final amPm = hour >= 12 ? 'PM' : 'AM';
+    final h12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '${d.day} ${months[d.month-1]}, $h12:$min $amPm';
+  }
+
+  Future<void> _createPlan() async {
+    if (_titleController.text.trim().isEmpty) { _showError('Plan title is required'); return; }
+    if (_locationController.text.trim().isEmpty) { _showError('Location is required'); return; }
+    if (_selectedDateTime == null) { _showError('Date and time are required'); return; }
+    if (_selectedVibe == null) { _showError('Please select a vibe'); return; }
+
+    setState(() => _isLoading = true);
     try {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('Not logged in');
       final profile = await supabase.from('profiles').select('name, profile_image').eq('id', user.id).single();
 
       await supabase.from('plans').insert({
-        'title': titleController.text.trim(),
-        'description': descriptionController.text.trim(),
-        'location': locationController.text.trim(),
-        'datetime': selectedDateTime!.toIso8601String(),
+        'title': _titleController.text.trim(),
+        'description': _descController.text.trim(),
+        'location': _locationController.text.trim(),
+        'datetime': _selectedDateTime!.toIso8601String(),
         'host_id': user.id,
         'host_name': profile['name'] ?? 'Anonymous',
         'host_image': profile['profile_image'],
-        'vibe': selectedVibe,
-        'max_size': maxSize,
+        'vibe': _selectedVibe,
+        'max_size': _maxSize,
         'participants': [user.id],
+        'is_boosted': false,
+        'is_sponsored': false,
       });
 
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Plan created! 🎉'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating),
+      );
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      _showError('Error: $e');
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.accent, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Create Plan')),
+      appBar: AppBar(
+        title: const Text('New Plan'),
+        leading: IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+        actions: [
+          TextButton(
+            onPressed: _isLoading ? null : _createPlan,
+            child: Text('Post', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 16)),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label('Title'),
-            TextField(controller: titleController, decoration: const InputDecoration(hintText: "What's the plan?")),
-            const SizedBox(height: 20),
+            // Title
+            _FieldLabel('What\'s the plan?'),
+            TextField(
+              controller: _titleController,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
+              decoration: const InputDecoration(hintText: 'Give it a great name...', hintStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              maxLines: 1,
+            ),
+            const SizedBox(height: 24),
 
-            _label('Description (optional)'),
-            TextField(controller: descriptionController, maxLines: 3, decoration: const InputDecoration(hintText: 'Tell people more...')),
-            const SizedBox(height: 20),
+            // Description
+            _FieldLabel('Description (optional)'),
+            TextField(
+              controller: _descController,
+              maxLines: 3,
+              decoration: const InputDecoration(hintText: 'Describe the vibe, what to expect...'),
+            ),
+            const SizedBox(height: 24),
 
-            _label('Location'),
-            TextField(controller: locationController, decoration: const InputDecoration(hintText: 'Where is it?')),
-            const SizedBox(height: 20),
+            // Location
+            _FieldLabel('Where?'),
+            TextField(
+              controller: _locationController,
+              decoration: InputDecoration(
+                hintText: 'Add a location',
+                prefixIcon: Icon(Icons.location_on_rounded, color: AppColors.accent, size: 20),
+              ),
+            ),
+            const SizedBox(height: 24),
 
-            _label('Date & Time'),
+            // Date & Time
+            _FieldLabel('When?'),
             GestureDetector(
               onTap: _pickDateTime,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(color: AppColors.inputFill, borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.divider)),
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 18, color: AppColors.subtle),
+                    Icon(Icons.calendar_month_rounded, color: AppColors.accent, size: 20),
                     const SizedBox(width: 12),
                     Text(
-                      selectedDateTime == null ? 'Pick a date & time' : '${selectedDateTime!.day}/${selectedDateTime!.month}/${selectedDateTime!.year} at ${selectedDateTime!.hour}:${selectedDateTime!.minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(color: selectedDateTime == null ? AppColors.subtle : AppColors.primary, fontSize: 15),
+                      _formatDt(),
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: _selectedDateTime != null ? AppColors.primary : AppColors.subtle,
+                        fontWeight: _selectedDateTime != null ? FontWeight.w600 : FontWeight.w400,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            _label('Vibe'),
+            // Vibes
+            _FieldLabel('Pick a Vibe'),
             Wrap(
               spacing: 10, runSpacing: 10,
-              children: vibes.map((v) {
-                final sel = selectedVibe == v;
+              children: _vibes.map((v) {
+                final sel = _selectedVibe == v;
                 return GestureDetector(
-                  onTap: () => setState(() => selectedVibe = sel ? null : v),
+                  onTap: () => setState(() => _selectedVibe = sel ? null : v),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: sel ? AppColors.accent : AppColors.inputFill,
-                      borderRadius: BorderRadius.circular(30),
+                      color: sel ? AppColors.vibeBg(v.toLowerCase()) : AppColors.card,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: sel ? AppColors.vibeFg(v.toLowerCase()).withOpacity(0.3) : AppColors.divider, width: sel ? 1.5 : 1),
+                      boxShadow: sel ? [BoxShadow(color: AppColors.vibeFg(v.toLowerCase()).withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))] : [],
                     ),
-                    child: Text(v, style: TextStyle(color: sel ? Colors.white : AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+                    child: Text(v, style: TextStyle(color: sel ? AppColors.vibeFg(v.toLowerCase()) : AppColors.subtle, fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            _label('Max Group Size'),
-            Row(
-              children: [
-                IconButton(
-                  onPressed: maxSize > 2 ? () => setState(() => maxSize--) : null,
-                  icon: Icon(Icons.remove_circle_outline, color: maxSize > 2 ? AppColors.primary : AppColors.divider),
-                ),
-                Text('$maxSize', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                IconButton(
-                  onPressed: maxSize < 20 ? () => setState(() => maxSize++) : null,
-                  icon: Icon(Icons.add_circle_outline, color: maxSize < 20 ? AppColors.primary : AppColors.divider),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : createPlan,
-                child: isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Post Plan'),
+            // Group Size
+            _FieldLabel('Max Group Size'),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.divider)),
+              child: Row(
+                children: [
+                  Icon(Icons.people_alt_rounded, color: AppColors.accent, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('$_maxSize people', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _maxSize > 2 ? () => setState(() => _maxSize--) : null,
+                        icon: Icon(Icons.remove_circle_outline_rounded, color: _maxSize > 2 ? AppColors.accent : AppColors.divider, size: 28),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('$_maxSize', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                      ),
+                      IconButton(
+                        onPressed: _maxSize < 20 ? () => setState(() => _maxSize++) : null,
+                        icon: Icon(Icons.add_circle_outline_rounded, color: _maxSize < 20 ? AppColors.accent : AppColors.divider, size: 28),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.fromLTRB(24, 14, 24, MediaQuery.of(context).padding.bottom + 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, -4))],
+        ),
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _createPlan,
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
+          child: _isLoading
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Create Plan'),
+        ),
+      ),
     );
   }
+}
 
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.subtle, letterSpacing: 0.5)),
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
   );
 }

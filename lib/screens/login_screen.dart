@@ -49,11 +49,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               const Spacer(flex: 2),
-              // Logo
+              // Brand
               Text(
                 'antigravity',
                 style: GoogleFonts.playfairDisplay(
-                  fontSize: 40,
+                  fontSize: 44,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),
@@ -64,28 +64,45 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 16, color: AppColors.subtle, letterSpacing: 0.3),
               ),
               const Spacer(),
-              // Email field
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(hintText: 'Email address'),
+
+              // Email
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(hintText: 'you@example.com'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              // Password field
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(hintText: 'Password'),
+              const SizedBox(height: 16),
+
+              // Password
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(hintText: '••••••••'),
+                  ),
+                ],
               ),
               const SizedBox(height: 28),
-              // Login button
+
+              // Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : login,
                   child: isLoading
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Log In'),
+                      : const Text('Continue'),
                 ),
               ),
               const SizedBox(height: 20),

@@ -22,11 +22,16 @@ class AppColors {
   static const Color bg = Color(0xFFF7F5F2);        // warm cream
   static const Color card = Colors.white;
   static const Color primary = Color(0xFF1A1A2E);    // deep navy
-  static const Color accent = Color(0xFFE8505B);     // warm coral-red
-  static const Color subtle = Color(0xFFA0A0A0);     // muted grey
-  static const Color divider = Color(0xFFEBE8E4);    // warm divider
+  static const Color accent = Color(0xFFE8505B);     // coral — CTAs & active only
+  static const Color subtle = Color(0xFFAAAAAA);     // muted grey
+  static const Color divider = Color(0xFFECEAE6);    // warm divider
   static const Color success = Color(0xFF4CAF50);
   static const Color inputFill = Color(0xFFF0EEEB);
+  static const Color chipBg = Color(0xFFEEECE8);    // neutral chip background
+
+  // All vibes use the same neutral chip — no rainbow
+  static Color vibeBg(String? vibe) => const Color(0xFFEEECE8);
+  static Color vibeFg(String? vibe) => const Color(0xFF1A1A2E);
 }
 
 class MyApp extends StatelessWidget {
