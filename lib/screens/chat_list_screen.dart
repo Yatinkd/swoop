@@ -10,7 +10,8 @@ class ChatListScreen extends StatefulWidget {
   State<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> with SingleTickerProviderStateMixin {
+class _ChatListScreenState extends State<ChatListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final supabase = Supabase.instance.client;
 
@@ -38,18 +39,24 @@ class _ChatListScreenState extends State<ChatListScreen> with SingleTickerProvid
           indicatorWeight: 3,
           labelColor: AppColors.accent,
           unselectedLabelColor: AppColors.subtle,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
           dividerColor: AppColors.divider,
-          tabs: const [Tab(text: 'Plans'), Tab(text: 'Direct')],
+          tabs: const [
+            Tab(text: 'Plans'),
+            Tab(text: 'Direct'),
+          ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildPlanChats(),
-          _buildPlaceholder('Direct Messages'),
-        ],
+        children: [_buildPlanChats(), _buildPlaceholder('Direct Messages')],
       ),
     );
   }
@@ -59,10 +66,16 @@ class _ChatListScreenState extends State<ChatListScreen> with SingleTickerProvid
     if (userId == null) return const SizedBox();
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: supabase.from('plans').stream(primaryKey: ['id']).order('created_at', ascending: false),
+      stream: supabase
+          .from('plans')
+          .stream(primaryKey: ['id'])
+          .order('created_at', ascending: false),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-        
+        if (!snapshot.hasData)
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.accent),
+          );
+
         final myPlans = snapshot.data!.where((p) {
           final parts = List<String>.from(p['participants'] ?? []);
           return p['host_id'] == userId || parts.contains(userId);
@@ -73,9 +86,20 @@ class _ChatListScreenState extends State<ChatListScreen> with SingleTickerProvid
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline_rounded, size: 48, color: AppColors.subtle.withOpacity(0.5)),
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 48,
+                  color: AppColors.subtle.withOpacity(0.5),
+                ),
                 const SizedBox(height: 16),
-                const Text('Join a plan to start chatting', style: TextStyle(color: AppColors.subtle, fontSize: 16, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Join a plan to start chatting',
+                  style: TextStyle(
+                    color: AppColors.subtle,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           );
@@ -94,37 +118,77 @@ class _ChatListScreenState extends State<ChatListScreen> with SingleTickerProvid
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 leading: Container(
-                  width: 54, height: 54,
+                  width: 54,
+                  height: 54,
                   decoration: BoxDecoration(
-                    color: AppColors.vibeBg(vibe), 
-                    borderRadius: BorderRadius.circular(16)
+                    color: AppColors.vibeBg(vibe),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
                     child: Text(
-                      vibe != null && vibe.toString().isNotEmpty ? vibe.toString()[0].toUpperCase() : 'E',
-                      style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.vibeFg(vibe), fontSize: 22),
-                    )
+                      vibe != null && vibe.toString().isNotEmpty
+                          ? vibe.toString()[0].toUpperCase()
+                          : 'E',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.vibeFg(vibe),
+                        fontSize: 22,
+                      ),
+                    ),
                   ),
                 ),
-                title: Text(plan['title'] ?? 'Untitled Group', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primary)),
+                title: Text(
+                  plan['title'] ?? 'Untitled Group',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.primary,
+                  ),
+                ),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.people_alt_rounded, size: 12, color: AppColors.subtle),
+                      const Icon(
+                        Icons.people_alt_rounded,
+                        size: 12,
+                        color: AppColors.subtle,
+                      ),
                       const SizedBox(width: 4),
-                      Text('${(plan['participants'] as List).length} members', style: const TextStyle(color: AppColors.subtle, fontSize: 13, fontWeight: FontWeight.w500)),
-                    ]
+                      Text(
+                        '${(plan['participants'] as List).length} members',
+                        style: const TextStyle(
+                          color: AppColors.subtle,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 trailing: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppColors.inputFill, shape: BoxShape.circle),
-                  child: const Icon(Icons.chevron_right_rounded, color: AppColors.subtle, size: 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.inputFill,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.subtle,
+                    size: 20,
+                  ),
                 ),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupChatScreen(plan: plan))),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GroupChatScreen(plan: plan),
+                  ),
+                ),
               ),
             );
           },
@@ -138,9 +202,20 @@ class _ChatListScreenState extends State<ChatListScreen> with SingleTickerProvid
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.forum_outlined, size: 48, color: AppColors.subtle.withOpacity(0.5)),
+          Icon(
+            Icons.forum_outlined,
+            size: 48,
+            color: AppColors.subtle.withOpacity(0.5),
+          ),
           const SizedBox(height: 16),
-          Text('No $title yet', style: const TextStyle(color: AppColors.subtle, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(
+            'No $title yet',
+            style: const TextStyle(
+              color: AppColors.subtle,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

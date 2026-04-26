@@ -25,7 +25,11 @@ class _SignupScreenState extends State<SignupScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e'), backgroundColor: AppColors.accent, behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: AppColors.accent,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -43,11 +47,25 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             children: [
               const Spacer(),
-              const Icon(Icons.person_add_alt_1, size: 64, color: AppColors.accent),
+              const Icon(
+                Icons.person_add_alt_1,
+                size: 64,
+                color: AppColors.accent,
+              ),
               const SizedBox(height: 16),
-              Text('Join Antigravity', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.primary)),
+              Text(
+                'Join Antigravity',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text('Create an account to start making plans', style: TextStyle(color: AppColors.subtle)),
+              Text(
+                'Create an account to start making plans',
+                style: TextStyle(color: AppColors.subtle),
+              ),
               const SizedBox(height: 40),
               TextField(
                 controller: emailController,
@@ -58,7 +76,9 @@ class _SignupScreenState extends State<SignupScreen> {
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(hintText: 'Password (min 6 chars)'),
+                decoration: const InputDecoration(
+                  hintText: 'Password (min 6 chars)',
+                ),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -66,7 +86,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : signup,
                   child: isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text('Create Account'),
                 ),
               ),

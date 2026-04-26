@@ -12,7 +12,8 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
+class _HistoryScreenState extends State<HistoryScreen>
+    with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
   late TabController _tabController;
   List<Map<String, dynamic>> _createdPlans = [];
@@ -33,14 +34,19 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return;
 
-      final allPlans = await supabase.from('plans').select().order('datetime', ascending: false);
+      final allPlans = await supabase
+          .from('plans')
+          .select()
+          .order('datetime', ascending: false);
 
       final created = <Map<String, dynamic>>[];
       final joined = <Map<String, dynamic>>[];
 
       for (final p in (allPlans as List)) {
         final isHost = p['host_id'] == userId;
-        final isParticipant = List<String>.from(p['participants'] ?? []).contains(userId);
+        final isParticipant = List<String>.from(
+          p['participants'] ?? [],
+        ).contains(userId);
 
         if (isHost) {
           created.add(Map<String, dynamic>.from(p));
@@ -49,7 +55,11 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         }
       }
 
-      final tickets = await supabase.from('tickets').select('*, hosted_events(*)').eq('user_id', userId).order('created_at', ascending: false);
+      final tickets = await supabase
+          .from('tickets')
+          .select('*, hosted_events(*)')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
 
       setState(() {
         _createdPlans = created;
@@ -63,7 +73,10 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
   }
 
   @override
-  void dispose() { _tabController.dispose(); super.dispose(); }
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,26 +90,43 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           unselectedLabelColor: AppColors.subtle,
           indicatorColor: AppColors.accent,
           indicatorSize: TabBarIndicatorSize.label,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          tabs: const [Tab(text: 'Created'), Tab(text: 'Joined'), Tab(text: 'Tickets')],
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+          tabs: const [
+            Tab(text: 'Created'),
+            Tab(text: 'Joined'),
+            Tab(text: 'Tickets'),
+          ],
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-          : TabBarView(controller: _tabController, children: [
-              _plansTab(_createdPlans, isCreated: true),
-              _plansTab(_joinedPlans, isCreated: false),
-              _ticketsTab(),
-            ]),
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.accent),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _plansTab(_createdPlans, isCreated: true),
+                _plansTab(_joinedPlans, isCreated: false),
+                _ticketsTab(),
+              ],
+            ),
     );
   }
 
-  Widget _plansTab(List<Map<String, dynamic>> plans, {required bool isCreated}) {
+  Widget _plansTab(
+    List<Map<String, dynamic>> plans, {
+    required bool isCreated,
+  }) {
     if (plans.isEmpty) {
       return _empty(
         isCreated ? Icons.create_outlined : Icons.group_outlined,
         isCreated ? 'No plans created yet' : 'No plans joined yet',
-        isCreated ? 'Create a plan and bring people together!' : 'Join a plan and meet new friends!',
+        isCreated
+            ? 'Create a plan and bring people together!'
+            : 'Join a plan and meet new friends!',
       );
     }
     return RefreshIndicator(
@@ -116,15 +146,28 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           final isPast = dt != null && dt.isBefore(DateTime.now());
 
           return GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlanDetailsScreen(plan: plan))),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => PlanDetailsScreen(plan: plan)),
+            ),
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)]),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
               child: Row(
                 children: [
                   Container(
-                    width: 44, height: 44,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: isPast
                           ? AppColors.success.withValues(alpha: 0.1)
@@ -132,7 +175,9 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      isPast ? Icons.check_circle_outline : Icons.event_outlined,
+                      isPast
+                          ? Icons.check_circle_outline
+                          : Icons.event_outlined,
                       color: isPast ? AppColors.success : AppColors.accent,
                       size: 24,
                     ),
@@ -144,37 +189,113 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                       children: [
                         Row(
                           children: [
-                            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15), overflow: TextOverflow.ellipsis)),
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                             if (isPast)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                child: Text('Completed', style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Completed',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               )
                             else
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                child: Text('Upcoming', style: TextStyle(fontSize: 10, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Upcoming',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                           ],
                         ),
                         const SizedBox(height: 3),
-                        Text(location, style: TextStyle(color: AppColors.subtle, fontSize: 12), overflow: TextOverflow.ellipsis),
+                        Text(
+                          location,
+                          style: TextStyle(
+                            color: AppColors.subtle,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const SizedBox(height: 3),
-                        Row(children: [
-                          if (dt != null) Text(timeago.format(dt), style: TextStyle(fontSize: 11, color: AppColors.subtle)),
-                          if (vibe != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
-                              child: Text(vibe, style: TextStyle(fontSize: 10, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                        Row(
+                          children: [
+                            if (dt != null)
+                              Text(
+                                timeago.format(dt),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.subtle,
+                                ),
+                              ),
+                            if (vibe != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  vibe,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Text(
+                              '${participants.length} ${isPast ? 'went' : 'going'}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.subtle,
+                              ),
                             ),
                           ],
-                          const Spacer(),
-                          Text('${participants.length} ${isPast ? 'went' : 'going'}', style: TextStyle(fontSize: 11, color: AppColors.subtle)),
-                        ]),
+                        ),
                       ],
                     ),
                   ),
@@ -188,7 +309,12 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
   }
 
   Widget _ticketsTab() {
-    if (_myTickets.isEmpty) return _empty(Icons.confirmation_number_outlined, 'No tickets', 'Browse events and buy tickets!');
+    if (_myTickets.isEmpty)
+      return _empty(
+        Icons.confirmation_number_outlined,
+        'No tickets',
+        'Browse events and buy tickets!',
+      );
     return RefreshIndicator(
       onRefresh: _fetchHistory,
       color: AppColors.accent,
@@ -205,26 +331,72 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)]),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.confirmation_number_outlined, color: AppColors.success, size: 24),
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.confirmation_number_outlined,
+                    color: AppColors.success,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(eventTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                      if (eventLocation.isNotEmpty) Text(eventLocation, style: TextStyle(color: AppColors.subtle, fontSize: 12)),
+                      Text(
+                        eventTitle,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (eventLocation.isNotEmpty)
+                        Text(
+                          eventLocation,
+                          style: TextStyle(
+                            color: AppColors.subtle,
+                            fontSize: 12,
+                          ),
+                        ),
                       const SizedBox(height: 4),
-                      Row(children: [
-                        Text('Ticket: ', style: TextStyle(fontSize: 12, color: AppColors.subtle)),
-                        Text(ticketId, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.accent, letterSpacing: 1)),
-                      ]),
+                      Row(
+                        children: [
+                          Text(
+                            'Ticket: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.subtle,
+                            ),
+                          ),
+                          Text(
+                            ticketId,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accent,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -237,12 +409,22 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
   }
 
   Widget _empty(IconData icon, String title, String sub) => Center(
-    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(icon, size: 64, color: AppColors.subtle.withValues(alpha: 0.4)),
-      const SizedBox(height: 16),
-      Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-      const SizedBox(height: 6),
-      Text(sub, style: TextStyle(color: AppColors.subtle)),
-    ]),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 64, color: AppColors.subtle.withValues(alpha: 0.4)),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(sub, style: TextStyle(color: AppColors.subtle)),
+      ],
+    ),
   );
 }

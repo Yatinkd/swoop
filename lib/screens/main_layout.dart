@@ -32,18 +32,31 @@ class _MainLayoutState extends State<MainLayout> {
       body: IndexedStack(index: _currentIndex, children: _screens),
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePlanScreen())),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreatePlanScreen()),
+              ),
               backgroundColor: AppColors.accent,
               elevation: 4,
-              child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
             )
           : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: const Border(top: BorderSide(color: Color(0xFFF0EEEB), width: 1)),
+          border: const Border(
+            top: BorderSide(color: Color(0xFFF0EEEB), width: 1),
+          ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, -4)),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
           ],
         ),
         child: SafeArea(
@@ -52,11 +65,46 @@ class _MainLayoutState extends State<MainLayout> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', index: 0, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explore', index: 1, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, label: 'Events', index: 2, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.chat_bubble_outline_rounded, activeIcon: Icons.chat_bubble_rounded, label: 'Chats', index: 3, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profile', index: 4, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
+                _NavItem(
+                  icon: Icons.bolt_outlined,
+                  activeIcon: Icons.bolt_rounded,
+                  label: 'Hop In',
+                  index: 0,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+                _NavItem(
+                  icon: Icons.explore_outlined,
+                  activeIcon: Icons.explore_rounded,
+                  label: 'Explore',
+                  index: 1,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+                _NavItem(
+                  icon: Icons.calendar_month_outlined,
+                  activeIcon: Icons.calendar_month_rounded,
+                  label: 'Events',
+                  index: 2,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+                _NavItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  activeIcon: Icons.chat_bubble_rounded,
+                  label: 'Chats',
+                  index: 3,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
+                _NavItem(
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Profile',
+                  index: 4,
+                  current: _currentIndex,
+                  onTap: (i) => setState(() => _currentIndex = i),
+                ),
               ],
             ),
           ),
@@ -75,8 +123,12 @@ class _NavItem extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   const _NavItem({
-    required this.icon, required this.activeIcon, required this.label,
-    required this.index, required this.current, required this.onTap,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.index,
+    required this.current,
+    required this.onTap,
   });
 
   @override
@@ -89,7 +141,9 @@ class _NavItem extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.accent.withOpacity(0.08) : Colors.transparent,
+          color: isActive
+              ? AppColors.accent.withOpacity(0.08)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(

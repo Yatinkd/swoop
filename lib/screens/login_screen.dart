@@ -31,7 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text('$e'),
           backgroundColor: AppColors.accent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } finally {
@@ -61,7 +63,11 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Text(
                 'Find your crew. Make plans.',
-                style: TextStyle(fontSize: 16, color: AppColors.subtle, letterSpacing: 0.3),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.subtle,
+                  letterSpacing: 0.3,
+                ),
               ),
               const Spacer(),
 
@@ -69,12 +75,21 @@ class _LoginScreenState extends State<LoginScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  Text(
+                    'Email',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(hintText: 'you@example.com'),
+                    decoration: const InputDecoration(
+                      hintText: 'you@example.com',
+                    ),
                   ),
                 ],
               ),
@@ -84,7 +99,14 @@ class _LoginScreenState extends State<LoginScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  Text(
+                    'Password',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: passwordController,
@@ -101,7 +123,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : login,
                   child: isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text('Continue'),
                 ),
               ),
@@ -109,10 +138,22 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't have an account? ", style: TextStyle(color: AppColors.subtle)),
+                  Text(
+                    "Don't have an account? ",
+                    style: TextStyle(color: AppColors.subtle),
+                  ),
                   GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen())),
-                    child: Text('Sign Up', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700)),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignupScreen()),
+                    ),
+                    child: Text(
+                      'Sign Up',
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),
