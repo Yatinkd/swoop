@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'signup_screen.dart';
+
 import '../main.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -29,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$e'),
-          backgroundColor: AppColors.accent,
+          backgroundColor: AppColors.navy,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -51,73 +53,45 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               const Spacer(flex: 2),
-              // Brand
+              Text('swoop', style: AppTextStyles.brand),
+              const SizedBox(height: 12),
               Text(
-                'antigravity',
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 44,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Find your crew. Make plans.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.subtle,
-                  letterSpacing: 0.3,
+                'Never miss an experience because you don\'t have someone to go with.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.navyLight,
+                  fontSize: 15,
                 ),
               ),
               const Spacer(),
-
-              // Email
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Email',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
+                  Text('Email', style: AppTextStyles.label),
                   const SizedBox(height: 8),
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      hintText: 'you@example.com',
-                    ),
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textBody),
+                    decoration: const InputDecoration(hintText: 'you@example.com'),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              // Password
+              const SizedBox(height: 18),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Password',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
+                  Text('Password', style: AppTextStyles.label),
                   const SizedBox(height: 8),
                   TextField(
                     controller: passwordController,
                     obscureText: true,
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textBody),
                     decoration: const InputDecoration(hintText: '••••••••'),
                   ),
                 ],
               ),
               const SizedBox(height: 28),
-
-              // Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -138,20 +112,17 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: TextStyle(color: AppColors.subtle),
-                  ),
+                  Text("Don't have an account? ", style: AppTextStyles.bodySmall),
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const SignupScreen()),
                     ),
                     child: Text(
-                      'Sign Up',
-                      style: TextStyle(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w700,
+                      'Sign up',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),

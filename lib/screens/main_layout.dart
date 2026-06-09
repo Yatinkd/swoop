@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../main.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 import 'home_screen.dart';
 import 'explore_screen.dart';
 import 'chat_list_screen.dart';
@@ -9,7 +10,7 @@ import 'profile_screen.dart';
 import 'create_plan_screen.dart';
 
 class MainLayout extends StatefulWidget {
-  const MainLayout({Key? key}) : super(key: key);
+  const MainLayout({super.key});
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
@@ -29,82 +30,40 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      backgroundColor: AppColors.bg,
+      body: ColoredBox(
+        color: AppColors.bg,
+        child: IndexedStack(index: _currentIndex, children: _screens),
+      ),
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
+              heroTag: 'main_fab',
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CreatePlanScreen()),
               ),
               backgroundColor: AppColors.accent,
-              elevation: 4,
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(
-            top: BorderSide(color: Color(0xFFF0EEEB), width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
+        decoration: const BoxDecoration(
+          color: AppColors.bgSecondary,
+          border: Border(top: BorderSide(color: AppColors.border)),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: SizedBox(
+            height: 56,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavItem(
-                  icon: Icons.bolt_outlined,
-                  activeIcon: Icons.bolt_rounded,
-                  label: 'Hop In',
-                  index: 0,
-                  current: _currentIndex,
-                  onTap: (i) => setState(() => _currentIndex = i),
-                ),
-                _NavItem(
-                  icon: Icons.explore_outlined,
-                  activeIcon: Icons.explore_rounded,
-                  label: 'Explore',
-                  index: 1,
-                  current: _currentIndex,
-                  onTap: (i) => setState(() => _currentIndex = i),
-                ),
-                _NavItem(
-                  icon: Icons.calendar_month_outlined,
-                  activeIcon: Icons.calendar_month_rounded,
-                  label: 'Events',
-                  index: 2,
-                  current: _currentIndex,
-                  onTap: (i) => setState(() => _currentIndex = i),
-                ),
-                _NavItem(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  activeIcon: Icons.chat_bubble_rounded,
-                  label: 'Chats',
-                  index: 3,
-                  current: _currentIndex,
-                  onTap: (i) => setState(() => _currentIndex = i),
-                ),
-                _NavItem(
-                  icon: Icons.person_outline_rounded,
-                  activeIcon: Icons.person_rounded,
-                  label: 'Profile',
-                  index: 4,
-                  current: _currentIndex,
-                  onTap: (i) => setState(() => _currentIndex = i),
-                ),
+                _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home', index: 0, current: _currentIndex, onTap: _setTab),
+                _NavItem(icon: Icons.search, activeIcon: Icons.search, label: 'Explore', index: 1, current: _currentIndex, onTap: _setTab),
+                _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today, label: 'Events', index: 2, current: _currentIndex, onTap: _setTab),
+                _NavItem(icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Chats', index: 3, current: _currentIndex, onTap: _setTab),
+                _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', index: 4, current: _currentIndex, onTap: _setTab),
               ],
             ),
           ),
@@ -112,6 +71,8 @@ class _MainLayoutState extends State<MainLayout> {
       ),
     );
   }
+
+  void _setTab(int i) => setState(() => _currentIndex = i);
 }
 
 class _NavItem extends StatelessWidget {
@@ -137,34 +98,23 @@ class _NavItem extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.accent.withOpacity(0.08)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
+      child: SizedBox(
+        width: 64,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isActive ? activeIcon : icon,
-                key: ValueKey(isActive),
-                color: isActive ? AppColors.accent : AppColors.subtle,
-                size: 24,
-              ),
+            Icon(
+              isActive ? activeIcon : icon,
+              size: 22,
+              color: isActive ? AppColors.navy : AppColors.textSecondary,
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? AppColors.accent : AppColors.subtle,
+              style: AppTextStyles.caption.copyWith(
+                fontSize: 10,
+                color: isActive ? AppColors.navy : AppColors.textSecondary,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ],

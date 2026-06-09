@@ -50,6 +50,7 @@ class _Step5InterestsScreenState extends State<Step5InterestsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(title: const OnboardingProgressBar(currentStep: 5)),
       body: SafeArea(
         child: Padding(

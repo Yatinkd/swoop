@@ -196,7 +196,8 @@ class _ActivityScreenState extends State<ActivityScreen>
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.bg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primary),
         title: const Text(

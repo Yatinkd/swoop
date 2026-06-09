@@ -46,6 +46,7 @@ class _Step3BioScreenState extends State<Step3BioScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(title: const OnboardingProgressBar(currentStep: 3)),
       body: SafeArea(
         child: SingleChildScrollView(

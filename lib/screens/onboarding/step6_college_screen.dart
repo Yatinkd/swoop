@@ -50,6 +50,7 @@ class _Step6CollegeScreenState extends State<Step6CollegeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(title: const OnboardingProgressBar(currentStep: 6)),
       body: SafeArea(
         child: Padding(

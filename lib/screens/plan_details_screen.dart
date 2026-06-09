@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'group_chat_screen.dart';
 import '../main.dart';
+import '../data/sample_data.dart';
+import '../models/user_profile.dart';
 import '../services/event_status_service.dart';
+import '../widgets/common/plan_cover_image.dart';
+import '../widgets/common/trust_badge.dart';
+import '../widgets/common/vibe_match_badge.dart';
 
 class PlanDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> plan;
@@ -129,7 +134,7 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
   void _showMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -217,7 +222,7 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
       return Scaffold(
         backgroundColor: AppColors.bg,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.card,
           elevation: 0,
           iconTheme: const IconThemeData(color: AppColors.primary),
         ),
@@ -284,7 +289,7 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
         children: [
           // ── Minimal App Bar ───────────────────────────────────
           Container(
-            color: Colors.white,
+            color: AppColors.bg,
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -322,40 +327,12 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Container(
+                    borderRadius: BorderRadius.circular(16),
+                    child: PlanCoverImage(
+                      imageUrl: coverImage,
+                      category: vibe,
+                      title: title,
                       height: 200,
-                      width: double.infinity,
-                      color: AppColors.inputFill,
-                      child: coverImage != null
-                          ? Image.network(coverImage, fit: BoxFit.cover)
-                          : Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    AppColors.accent
-                                        .withValues(alpha: 0.15),
-                                    AppColors.primary
-                                        .withValues(alpha: 0.07),
-                                  ],
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  title.isNotEmpty
-                                      ? title[0].toUpperCase()
-                                      : 'P',
-                                  style: TextStyle(
-                                    fontSize: 72,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.accent
-                                        .withValues(alpha: 0.25),
-                                  ),
-                                ),
-                              ),
-                            ),
                     ),
                   ),
                 ),
@@ -513,52 +490,144 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                   ),
                 ],
 
-                // ── Host ──────────────────────────────────────────
+                // ── Host + Trust ──────────────────────────────────
                 const SizedBox(height: 12),
                 _Card(
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor:
-                            AppColors.accent.withValues(alpha: 0.1),
-                        backgroundImage: hostImage != null
-                            ? NetworkImage(hostImage)
-                            : null,
-                        child: hostImage == null
-                            ? Text(
-                                hostName.isNotEmpty
-                                    ? hostName[0].toUpperCase()
-                                    : 'H',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.accent,
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor:
+                                AppColors.accent.withValues(alpha: 0.1),
+                            backgroundImage: hostImage != null
+                                ? NetworkImage(hostImage)
+                                : null,
+                            child: hostImage == null
+                                ? Text(
+                                    hostName.isNotEmpty
+                                        ? hostName[0].toUpperCase()
+                                        : 'H',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.accent,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hostName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.text,
+                                  ),
                                 ),
-                              )
-                            : null,
+                                const Text(
+                                  'Host',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.subtle,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const VibeMatchBadge(percent: 92),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              hostName,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                      const SizedBox(height: 14),
+                      TrustBadge(
+                        profile: UserProfile(
+                          id: widget.plan['host_id']?.toString() ?? '',
+                          name: hostName,
+                          profileImage: hostImage,
+                          rating: 4.9,
+                          plansHosted: 18,
+                          plansJoined: 52,
+                          isVerified: true,
+                        ),
+                        compact: true,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Who's Going ───────────────────────────────────
+                const SizedBox(height: 12),
+                _Card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Who's Going",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      ...SampleData.attendees.map(
+                        (attendee) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: AppColors.secondary,
+                                child: Text(
+                                  attendee.name[0],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
-                            ),
-                            const Text(
-                              'Host',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.subtle,
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      attendee.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                                    Text(
+                                      attendee.interests.join(' • '),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.subtle,
+                                      ),
+                                    ),
+                                    if (attendee.mutualFriends.isNotEmpty)
+                                      Text(
+                                        '${attendee.mutualFriends.length} mutual friends',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              if (attendee.vibeMatchPercent > 0)
+                                VibeMatchBadge(percent: attendee.vibeMatchPercent),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -595,60 +664,110 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                               ...pending.map(
                                 (req) => Padding(
                                   padding:
-                                      const EdgeInsets.only(bottom: 10),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 16,
-                                        backgroundColor:
-                                            AppColors.inputFill,
-                                        child: Text(
-                                          req['user_name']?[0]
-                                                  ?.toUpperCase() ??
-                                              'U',
-                                          style: const TextStyle(
+                                      const EdgeInsets.only(bottom: 12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.inputFill,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppColors.border),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 18,
+                                              backgroundColor: AppColors.inputFill,
+                                              child: Text(
+                                                req['user_name']?[0]
+                                                        ?.toUpperCase() ??
+                                                    'U',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 13,
+                                                  color: AppColors.text,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                '${req['user_name'] ?? 'User'} wants to join',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.text,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        const Text(
+                                          'Shared Interests',
+                                          style: TextStyle(
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                            color: AppColors.primary,
+                                            color: AppColors.subtle,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          req['user_name'] ?? 'User',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: ['Music', 'Travel', 'Concerts']
+                                              .map(
+                                                (i) => Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.card,
+                                                    borderRadius:
+                                                        BorderRadius.circular(100),
+                                                  ),
+                                                  child: Text(
+                                                    i,
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
                                         ),
-                                      ),
-                                      // Reject
-                                      GestureDetector(
-                                        onTap: () => _updateRequest(
-                                            req['id'],
-                                            req['user_id'],
-                                            'rejected'),
-                                        child: const Icon(
-                                          Icons.close_rounded,
-                                          color: AppColors.accent,
-                                          size: 22,
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                onPressed: () => _updateRequest(
+                                                  req['id'],
+                                                  req['user_id'],
+                                                  'rejected',
+                                                ),
+                                                child: const Text('Decline'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () => _updateRequest(
+                                                  req['id'],
+                                                  req['user_id'],
+                                                  'accepted',
+                                                ),
+                                                child: const Text('Accept'),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      // Accept
-                                      GestureDetector(
-                                        onTap: () => _updateRequest(
-                                            req['id'],
-                                            req['user_id'],
-                                            'accepted'),
-                                        child: const Icon(
-                                          Icons.check_circle_rounded,
-                                          color: AppColors.success,
-                                          size: 26,
-                                        ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -832,13 +951,7 @@ class _Card extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: AppColors.divider, width: 1.5),
         ),
         child: child,
       ),

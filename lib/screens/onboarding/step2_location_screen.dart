@@ -42,6 +42,7 @@ class _Step2LocationScreenState extends State<Step2LocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(title: const OnboardingProgressBar(currentStep: 2)),
       body: SafeArea(
         child: Padding(

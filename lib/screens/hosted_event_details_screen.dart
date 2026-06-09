@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import '../main.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
+import '../widgets/common/event_cover_image.dart';
 
 class HostedEventDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -160,15 +163,36 @@ class _HostedEventDetailsScreenState extends State<HostedEventDetailsScreen> {
     final currentUserId = supabase.auth.currentUser?.id;
     final isHost = widget.event['host_id'] == currentUserId;
 
+    final imgUrl = widget.event['img_url'] as String?;
+    final title = widget.event['title'] ?? '';
+
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Event Details')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Host
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 260,
+            pinned: true,
+            backgroundColor: AppColors.bg,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: EventCoverImage(
+                imageUrl: imgUrl,
+                title: title,
+                height: 260,
+                borderRadius: BorderRadius.zero,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -204,14 +228,7 @@ class _HostedEventDetailsScreenState extends State<HostedEventDetailsScreen> {
             ),
             const SizedBox(height: 24),
 
-            Text(
-              widget.event['title'] ?? '',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-              ),
-            ),
+            Text(title, style: AppTextStyles.largeHeading.copyWith(fontSize: 28)),
             if (widget.event['description'] != null &&
                 widget.event['description'].toString().isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -487,8 +504,11 @@ class _HostedEventDetailsScreenState extends State<HostedEventDetailsScreen> {
                 },
               ),
             ],
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

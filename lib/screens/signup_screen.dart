@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../main.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({Key? key}) : super(key: key);
+  const SignupScreen({super.key});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -27,7 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$e'),
-          backgroundColor: AppColors.accent,
+          backgroundColor: AppColors.navy,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -40,45 +43,35 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(title: Text('Create account', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.navy))),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             children: [
               const Spacer(),
-              const Icon(
-                Icons.person_add_alt_1,
-                size: 64,
-                color: AppColors.accent,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Join Antigravity',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
+              Icon(Icons.person_add_alt_1_outlined, size: 56, color: AppColors.navyMid),
+              const SizedBox(height: 20),
+              Text('Join Swoop', style: AppTextStyles.sectionHeading.copyWith(fontSize: 24)),
               const SizedBox(height: 8),
               Text(
-                'Create an account to start making plans',
-                style: TextStyle(color: AppColors.subtle),
+                'Create an account to start finding your crew',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(color: AppColors.navyLight),
               ),
               const SizedBox(height: 40),
               TextField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textBody),
                 decoration: const InputDecoration(hintText: 'Email address'),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  hintText: 'Password (min 6 chars)',
-                ),
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textBody),
+                decoration: const InputDecoration(hintText: 'Password (min 6 chars)'),
               ),
               const SizedBox(height: 28),
               SizedBox(
@@ -94,7 +87,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Create Account'),
+                      : const Text('Create account'),
                 ),
               ),
               const Spacer(flex: 2),

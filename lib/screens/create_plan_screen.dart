@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../main.dart';
+import '../constants/vibe_tags.dart';
 import '../services/plan_image_service.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/common/cover_photo_picker.dart';
+import '../widgets/common/vibe_tag_chip.dart';
 
 class CreatePlanScreen extends StatefulWidget {
   final String? initialVibe;
@@ -32,7 +35,7 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
   String? _coverExtension;
 
   final supabase = Supabase.instance.client;
-  final _vibes = ['Chill', 'Party', 'Study', 'Adventure', 'Food', 'Sports'];
+  final _vibes = VibeTags.planCategories;
 
   @override
   void initState() {
@@ -236,10 +239,11 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CoverPhotoPicker(
+            CoverPhotoPicker(
               bytes: _coverBytes,
               onPick: _pickCoverImage,
               onRemove: _removeCoverImage,
+              subtitle: 'Optional — helps people feel the vibe',
             ),
             const SizedBox(height: 20),
             _SectionCard(
@@ -314,31 +318,16 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FieldLabel('Category *'),
+                  _FieldLabel('Vibe *'),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: _vibes.map((v) {
                       final sel = _selectedVibe == v;
-                      return GestureDetector(
+                      return VibeTagChip(
+                        label: VibeTags.labelForCategory(v),
+                        selected: sel,
                         onTap: () => setState(() => _selectedVibe = sel ? null : v),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                          decoration: BoxDecoration(
-                            color: sel ? AppColors.accent : AppColors.card,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: sel ? AppColors.accent : AppColors.border,
-                            ),
-                          ),
-                          child: Text(
-                            v,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: sel ? Colors.white : AppColors.text,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
                       );
                     }).toList(),
                   ),
@@ -404,103 +393,6 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
   }
 }
 
-class _CoverPhotoPicker extends StatelessWidget {
-  final Uint8List? bytes;
-  final VoidCallback onPick;
-  final VoidCallback onRemove;
-
-  const _CoverPhotoPicker({
-    required this.bytes,
-    required this.onPick,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = bytes != null;
-
-    return GestureDetector(
-      onTap: hasImage ? null : onPick,
-      child: Container(
-        width: double.infinity,
-        height: 180,
-        decoration: BoxDecoration(
-          color: AppColors.inputFill,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: hasImage
-            ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.memory(bytes!, fit: BoxFit.cover),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Row(
-                      children: [
-                        _CoverAction(
-                          icon: Icons.edit_outlined,
-                          onTap: onPick,
-                        ),
-                        const SizedBox(width: 8),
-                        _CoverAction(
-                          icon: Icons.close,
-                          onTap: onRemove,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 32,
-                    color: AppColors.textSecondary.withValues(alpha: 0.6),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add cover photo',
-                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.text),
-                  ),
-                  Text(
-                    'Optional — shown on your plan card',
-                    style: AppTextStyles.caption,
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-class _CoverAction extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CoverAction({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: Colors.white, size: 18),
-        ),
-      ),
-    );
-  }
-}
-
 class _FieldLabel extends StatelessWidget {
   final String text;
   const _FieldLabel(this.text);
@@ -523,7 +415,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
         border: Border.all(color: AppColors.border),
       ),
       child: child,

@@ -77,6 +77,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const CreatePlanScreen()),
@@ -189,19 +190,21 @@ class _PlanList extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.card,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.divider, width: 1.5),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.04),
-                      blurRadius: 14,
+                      blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 60,
+                      height: 60,
                       decoration: BoxDecoration(
                         color: AppColors.vibeBg(vibe),
                         borderRadius: BorderRadius.circular(16),
@@ -227,33 +230,78 @@ class _PlanList extends StatelessWidget {
                           Text(
                             plan['title'] ?? 'Untitled Event',
                             style: const TextStyle(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               fontSize: 16,
                               color: AppColors.primary,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               const Icon(
-                                Icons.calendar_today_rounded,
+                                Icons.access_time_rounded,
                                 size: 14,
-                                color: AppColors.accent,
+                                color: AppColors.subtle,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Text(
                                 _formatDt(plan['datetime']),
                                 style: const TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.accent,
+                                  color: AppColors.subtle,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.people_alt_rounded,
+                                size: 14,
+                                color: AppColors.subtle,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${List<String>.from(plan['participants'] ?? []).length}/${plan['max_size'] ?? 5} going',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (plan['location'] != null && plan['location'].toString().isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  size: 14,
+                                  color: AppColors.subtle,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    plan['location'],
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.subtle,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
+                    const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -286,8 +334,8 @@ class _RequestsTabState extends State<_RequestsTab> {
   final supabase = Supabase.instance.client;
 
   Future<void> _updateStatus(
-    int reqId,
-    String planId,
+    dynamic reqId,
+    dynamic planId,
     String userId,
     bool accept,
   ) async {
@@ -338,7 +386,7 @@ class _RequestsTabState extends State<_RequestsTab> {
             child: CircularProgressIndicator(color: AppColors.accent),
           );
         final myPlanIds = planSnapshot.data!
-            .map((p) => p['id'] as String)
+            .map((p) => p['id'].toString())
             .toList();
         if (myPlanIds.isEmpty)
           return const Center(
@@ -359,7 +407,7 @@ class _RequestsTabState extends State<_RequestsTab> {
             final reqs = allReqs
                 .where(
                   (r) =>
-                      myPlanIds.contains(r['plan_id']) &&
+                      myPlanIds.contains(r['plan_id'].toString()) &&
                       r['status'] == 'pending',
                 )
                 .toList();
@@ -406,13 +454,7 @@ class _RequestsTabState extends State<_RequestsTab> {
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        border: Border.all(color: AppColors.divider, width: 1.5),
                       ),
                       child: Row(
                         children: [

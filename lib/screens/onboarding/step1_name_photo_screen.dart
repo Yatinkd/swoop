@@ -74,6 +74,7 @@ class _Step1NamePhotoScreenState extends State<Step1NamePhotoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
         title: const OnboardingProgressBar(currentStep: 1),
         leading: data.isEditing

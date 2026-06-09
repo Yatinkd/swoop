@@ -1,383 +1,244 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../data/sample_data.dart';
+import '../models/plan.dart';
+import '../models/user_profile.dart';
+import '../repositories/plan_repository.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
+import '../utils/plan_formatters.dart';
+import '../widgets/common/empty_state.dart';
+import '../widgets/common/quick_action_chip.dart';
+import '../widgets/common/section_header.dart';
+import '../widgets/common/swoop_search_bar.dart';
+import '../widgets/home/friend_activity_feed.dart';
+import '../widgets/home/recommended_person_card.dart';
+import '../widgets/plan/plan_card.dart';
+import 'create_plan_screen.dart';
+import 'explore_screen.dart';
 import 'plan_details_screen.dart';
-import '../main.dart';
-import '../services/event_status_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final supabase = Supabase.instance.client;
+  final _repo = PlanRepository();
+  final _supabase = Supabase.instance.client;
+
   Map<String, dynamic>? _profile;
-
-  // Upcoming Plans: only active/future events (public feed)
-  List<Map<String, dynamic>> _upcomingPlans = [];
-
-  // Your Activity: ALL events the user is part of (including past)
-  List<Map<String, dynamic>> _myActivity = [];
-
-  bool _isLoading = true;
-
-  // ── Real-time completion timer ──────────────────────────────────
-  // Re-fetches plans every minute. Any event whose datetime just passed
-  // will be removed from Upcoming and moved to Your Activity automatically.
-  Timer? _refreshTimer;
+  List<Plan> _plans = [];
+  List<UserProfile> _recommended = [];
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadAll();
+    _load();
+  }
 
-    // Refresh every 60 seconds so Upcoming Plans disappears the moment
-    // an event's time passes without requiring a manual pull-to-refresh.
-    _refreshTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) { if (mounted) _loadPlans(); },
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final userId = _supabase.auth.currentUser?.id;
+    try {
+      if (userId != null) {
+        final data = await _supabase
+            .from('profiles')
+            .select('name, location, profile_image, vibe_tags, interests')
+            .eq('id', userId)
+            .maybeSingle();
+        _profile = data;
+      }
+    } catch (_) {}
+
+    final plans = await _repo.fetchPlans();
+    final recommended = await _loadRecommended(userId);
+
+    if (mounted) {
+      setState(() {
+        _plans = plans;
+        _recommended = recommended;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<List<UserProfile>> _loadRecommended(String? userId) async {
+    try {
+      final builder = _supabase
+          .from('profiles')
+          .select('id, name, profile_image, vibe_tags, interests, location')
+          .eq('onboarding_complete', true);
+
+      final rows = userId != null
+          ? await builder.neq('id', userId).limit(8)
+          : await builder.limit(8);
+      final myVibes = List<String>.from(_profile?['vibe_tags'] ?? []);
+      return (rows as List).map((row) {
+        final vibes = List<String>.from(row['vibe_tags'] ?? []);
+        final match = _vibeMatchPercent(myVibes, vibes);
+        return UserProfile(
+          id: row['id'].toString(),
+          name: row['name']?.toString() ?? 'User',
+          profileImage: row['profile_image']?.toString(),
+          vibeTags: vibes,
+          interests: List<String>.from(row['interests'] ?? []),
+          vibeMatchPercent: match,
+          rating: 4.7 + (match % 3) * 0.1,
+        );
+      }).toList()
+        ..sort((a, b) => b.vibeMatchPercent.compareTo(a.vibeMatchPercent));
+    } catch (_) {
+      return SampleData.recommendedPeople;
+    }
+  }
+
+  int _vibeMatchPercent(List<String> mine, List<String> theirs) {
+    if (mine.isEmpty || theirs.isEmpty) return 72;
+    final overlap = mine.where(theirs.contains).length;
+    final total = mine.length + theirs.length - overlap;
+    if (total == 0) return 70;
+    return (70 + (overlap / total) * 30).round().clamp(70, 99);
+  }
+
+  void _openPlan(Plan plan) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlanDetailsScreen(plan: plan.toMap())),
+    );
+  }
+
+  void _openExplore() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ExploreScreen()),
     );
   }
 
   @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadAll() async {
-    setState(() => _isLoading = true);
-    await Future.wait([_loadProfile(), _loadPlans()]);
-    if (mounted) setState(() => _isLoading = false);
-  }
-
-  Future<void> _loadProfile() async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
-      final data = await supabase
-          .from('profiles')
-          .select('name, location, profile_image')
-          .eq('id', userId)
-          .maybeSingle();
-      if (mounted) setState(() => _profile = data);
-    } catch (_) {}
-  }
-
-  Future<void> _loadPlans() async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-
-      // ── Fetch ALL plans once ──────────────────────────────────
-      // We do one fetch and split client-side — simple and beginner-friendly.
-      final allPlans = await supabase
-          .from('plans')
-          .select()
-          .order('datetime', ascending: true); // ascending = soonest first
-
-      final now = DateTime.now();
-      final upcoming = <Map<String, dynamic>>[];
-      final myActivity = <Map<String, dynamic>>[];
-
-      for (final p in (allPlans as List)) {
-        final plan = Map<String, dynamic>.from(p);
-
-        // Determine if event is in the past or marked completed
-        final status = (plan['status'] ?? '').toString();
-        final dt = EventStatusService.parseLocalTime(plan['datetime']);
-        final isPast = dt != null && dt.isBefore(now) ||
-            status == 'completed';
-
-        // ── UPCOMING PLANS (public) ────────────────────────────
-        // Show ONLY future + active events in the public section
-        if (!isPast) {
-          upcoming.add(plan);
-        }
-
-        // ── YOUR ACTIVITY (private) ────────────────────────────
-        // Show ALL events (past + upcoming) where user is host or participant
-        if (userId != null) {
-          final isHost = plan['host_id'] == userId;
-          final isParticipant =
-              List<String>.from(plan['participants'] ?? []).contains(userId);
-          if (isHost || isParticipant) {
-            myActivity.add(plan);
-          }
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _upcomingPlans = upcoming;
-          _myActivity = myActivity;
-        });
-      }
-
-      // ── Auto-mark completed events in Supabase ────────────────────
-      // Writes status='completed' for any plan whose time has passed.
-      // This fires silently in the background so other devices and the
-      // Explore StreamBuilder also pick up the change automatically.
-      EventStatusService.autoMarkBatch(
-        (allPlans as List).map((p) => Map<String, dynamic>.from(p)).toList(),
-      );
-    } catch (_) {}
-  }
-
-  String _formatDate(String? dt) {
-    if (dt == null) return '';
-    final d = EventStatusService.parseLocalTime(dt) ?? DateTime.now();
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final hour = d.hour;
-    final min = d.minute.toString().padLeft(2, '0');
-    final amPm = hour >= 12 ? 'PM' : 'AM';
-    final h12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    return '${d.day} ${months[d.month - 1]}  ·  $h12:$min $amPm';
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final userId = supabase.auth.currentUser?.id;
-    final userName = (_profile?['name'] as String? ?? '').split(' ').first;
-    final userLocation = _profile?['location'] as String? ?? '';
-    final userImage = _profile?['profile_image'];
+    final name = (_profile?['name'] as String?) ?? '';
+    final upcoming = _plans.where((p) => !p.isPast).toList();
+    final featured = _plans
+        .where((p) => p.coverImage != null && p.coverImage!.isNotEmpty)
+        .take(6)
+        .toList();
+    final activity = _repo.activityFeed();
+    final people = _recommended.isNotEmpty ? _recommended : SampleData.recommendedPeople;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _loadAll,
+          onRefresh: _load,
           color: AppColors.accent,
+          strokeWidth: 2,
           child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // ── Header ──────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              userName.isNotEmpty
-                                  ? 'Hey, $userName 👋'
-                                  : 'Hey there 👋',
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            if (userLocation.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.location_on_rounded,
-                                    size: 14,
-                                    color: AppColors.accent,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    userLocation,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.subtle,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
+                      Text(
+                        PlanFormatters.greeting(name),
+                        style: AppTextStyles.largeHeading,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        PlanFormatters.subGreeting(),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.navyLight,
+                          fontSize: 15,
                         ),
                       ),
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: AppColors.accent.withOpacity(0.12),
-                        backgroundImage:
-                            userImage != null ? NetworkImage(userImage) : null,
-                        child: userImage == null
-                            ? Text(
-                                userName.isNotEmpty
-                                    ? userName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: AppColors.accent,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
+                      const SizedBox(height: 28),
+                      SwoopSearchBar(
+                        readOnly: true,
+                        onTap: _openExplore,
+                        hintText: 'Search experiences near you...',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Quick start', style: AppTextStyles.label),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          ...SampleData.quickActions.map(
+                            (a) => QuickActionChip(
+                              label: a.$1,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CreatePlanScreen(initialVibe: a.$2),
                                 ),
-                              )
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-
-              // ── UPCOMING PLANS section title ─────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      const Text(
-                        'Upcoming Plans',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Shows count so users know how many active plans exist
-                      if (_upcomingPlans.isNotEmpty)
-                        Text(
-                          '${_upcomingPlans.length} active',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-              // ── Horizontal upcoming plan cards ───────────────
-              // ONLY shows events where datetime > now AND status != 'completed'
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 300,
-                  child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.accent,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : _upcomingPlans.isEmpty
-                          ? _emptyNearby()
-                          : ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              itemCount: _upcomingPlans.length,
-                              itemBuilder: (_, i) => _PlanCard(
-                                plan: _upcomingPlans[i],
-                                formatDate: _formatDate,
                               ),
                             ),
+                          ),
+                          QuickActionChip(
+                            label: 'Create hangout',
+                            isPrimary: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const CreatePlanScreen()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
+              if (featured.isNotEmpty) ...[
+                const SliverToBoxAdapter(child: SizedBox(height: 36)),
+                SliverToBoxAdapter(
+                  child: SectionHeader(
+                    title: 'Featured hangouts',
+                    onSeeAll: _openExplore,
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                SliverToBoxAdapter(child: _buildFeatured(featured)),
+              ],
               const SliverToBoxAdapter(child: SizedBox(height: 36)),
-
-              // ── YOUR ACTIVITY section title ───────────────────
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: const Text(
-                    'Your Activity',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
+                child: SectionHeader(
+                  title: 'Upcoming',
+                  trailing: upcoming.isNotEmpty ? '${upcoming.length}' : null,
+                  onSeeAll: upcoming.isNotEmpty ? _openExplore : null,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-              // ── Activity list: host + participant events (ALL, inc. past) ─
-              _myActivity.isEmpty
-                  ? SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Container(
-                          padding: const EdgeInsets.all(28),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.travel_explore_rounded,
-                                size: 40,
-                                color: AppColors.accent.withOpacity(0.4),
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'No plans yet',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                  fontSize: 17,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Join a plan or create your own!',
-                                style: TextStyle(
-                                  color: AppColors.subtle,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (_, i) => Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: _MyPlanTile(
-                            plan: _myActivity[i],
-                            userId: userId,
-                            formatDate: _formatDate,
-                          ),
-                        ),
-                        childCount: _myActivity.length,
-                      ),
-                    ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 110)),
+              const SliverToBoxAdapter(child: SizedBox(height: 14)),
+              SliverToBoxAdapter(child: _buildUpcoming(upcoming)),
+              const SliverToBoxAdapter(child: SizedBox(height: 36)),
+              SliverToBoxAdapter(
+                child: SectionHeader(title: 'People you might click with'),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 14)),
+              SliverToBoxAdapter(child: _buildRecommended(people)),
+              if (activity.isNotEmpty) ...[
+                const SliverToBoxAdapter(child: SizedBox(height: 36)),
+                SliverToBoxAdapter(child: SectionHeader(title: 'Recent activity')),
+                const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                SliverToBoxAdapter(child: FriendActivityFeed(items: activity)),
+              ],
+              const SliverToBoxAdapter(child: SizedBox(height: 96)),
             ],
           ),
         ),
@@ -385,471 +246,96 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _emptyNearby() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.explore_outlined,
-          size: 40,
-          color: AppColors.subtle.withOpacity(0.5),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'No plans around yet',
-          style: TextStyle(color: AppColors.subtle, fontSize: 14),
-        ),
-      ],
-    ),
-  );
-}
-
-// ── Horizontal plan card ─────────────────────────────────────────
-class _PlanCard extends StatelessWidget {
-  final Map<String, dynamic> plan;
-  final String Function(String?) formatDate;
-
-  const _PlanCard({required this.plan, required this.formatDate});
-
-  @override
-  Widget build(BuildContext context) {
-    final title = plan['title'] ?? 'Untitled';
-    final vibe = plan['vibe'] as String?;
-    final hostName = plan['host_name'] ?? 'Host';
-    final location = plan['location'] ?? '';
-    final participants = List<String>.from(plan['participants'] ?? []);
-    final maxSize = plan['max_size'] ?? 5;
-    final isFull = participants.length >= maxSize;
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PlanDetailsScreen(plan: plan)),
-      ),
-      child: Container(
-        width: 260,
-        margin: const EdgeInsets.only(right: 16),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: AppColors.accent.withOpacity(0.02),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Clean gradient top block
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.accent.withOpacity(0.12),
-                      AppColors.inputFill,
-                    ],
-                  ),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (vibe != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              vibe,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.favorite_border_rounded,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    if (isFull)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Full',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: -0.3,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Hosted by $hostName',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.subtle.withOpacity(0.8),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (plan['datetime'] != null)
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(
-                            Icons.schedule_rounded,
-                            size: 14,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            formatDate(plan['datetime']),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.subtle,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (location.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(
-                            Icons.location_on_rounded,
-                            size: 14,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            location,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.subtle,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  // Social Element & CTA
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 44,
-                        height: 24,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 0,
-                              child: Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.accent.withOpacity(0.2),
-                                  border: Border.all(
-                                    color: AppColors.card,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 14,
-                                  color: AppColors.accent,
-                                ),
-                              ),
-                            ),
-                            if (maxSize > 1)
-                              Positioned(
-                                left: 16,
-                                child: Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.subtle.withOpacity(0.2),
-                                    border: Border.all(
-                                      color: AppColors.card,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 14,
-                                    color: AppColors.subtle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${participants.length}/$maxSize going',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Subtle CTA
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.inputFill,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Join',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+  Widget _buildFeatured(List<Plan> plans) {
+    return SizedBox(
+      height: kHorizontalPlanCardHeight,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: plans.length,
+        itemBuilder: (_, i) {
+          final p = plans[i];
+          return PlanCard(
+            horizontal: true,
+            title: p.title,
+            hostName: p.hostName,
+            location: p.location,
+            dateTime: PlanFormatters.formatShortDate(p.datetime),
+            attendeeCount: p.attendeeCount,
+            maxSize: p.maxSize,
+            category: p.category,
+            coverImage: p.coverImage,
+            onTap: () => _openPlan(p),
+          );
+        },
       ),
     );
   }
-}
 
-// ── My plan list tile ────────────────────────────────────────────
-class _MyPlanTile extends StatelessWidget {
-  final Map<String, dynamic> plan;
-  final String? userId;
-  final String Function(String?) formatDate;
+  Widget _buildUpcoming(List<Plan> plans) {
+    if (_loading) {
+      return const SizedBox(
+        height: 200,
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
 
-  const _MyPlanTile({
-    required this.plan,
-    required this.userId,
-    required this.formatDate,
-  });
+    if (plans.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: SwoopEmptyState(
+          headline: 'No plans nearby yet',
+          subheadline: 'Start one or browse Explore to find your crew.',
+          primaryLabel: 'Create hangout',
+          secondaryLabel: 'Explore',
+          onPrimary: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreatePlanScreen()),
+          ),
+          onSecondary: _openExplore,
+        ),
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final title = plan['title'] ?? 'Untitled';
-    final vibe = plan['vibe'] as String?;
-    final isHost = plan['host_id'] == userId;
-
-    // ── Completion detection (same logic as everywhere else) ───────
-    final status = (plan['status'] ?? '').toString();
-    final dt = EventStatusService.parseLocalTime(plan['datetime']);
-    final isCompleted =
-        status == 'completed' || (dt != null && dt.isBefore(DateTime.now()));
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PlanDetailsScreen(plan: plan)),
+    return SizedBox(
+      height: kHorizontalPlanCardHeight,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: plans.length,
+        itemBuilder: (_, i) {
+          final p = plans[i];
+          return PlanCard(
+            horizontal: true,
+            title: p.title,
+            hostName: p.hostName,
+            location: p.location,
+            dateTime: PlanFormatters.formatShortDate(p.datetime),
+            attendeeCount: p.attendeeCount,
+            maxSize: p.maxSize,
+            category: p.category,
+            coverImage: p.coverImage,
+            onTap: () => _openPlan(p),
+          );
+        },
       ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.vibeBg(vibe?.toLowerCase()),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Center(
-                child: Text(
-                  vibe?.isNotEmpty == true ? vibe![0].toUpperCase() : 'P',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.vibeFg(vibe?.toLowerCase()),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // ── Status badge ──────────────────────────────
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isCompleted
-                              ? AppColors.subtle.withOpacity(0.08)
-                              : isHost
-                                  ? AppColors.accent.withOpacity(0.1)
-                                  : AppColors.inputFill,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isCompleted
-                              ? 'Completed'
-                              : (isHost ? 'Host' : 'Joined'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isCompleted
-                                ? AppColors.subtle
-                                : (isHost
-                                    ? AppColors.accent
-                                    : AppColors.subtle),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  if (plan['datetime'] != null)
-                    Text(
-                      formatDate(plan['datetime']),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.subtle,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.subtle.withOpacity(0.5),
-              size: 22,
-            ),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildRecommended(List<UserProfile> people) {
+    return SizedBox(
+      height: kRecommendedPersonCardHeight,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: people.length,
+        itemBuilder: (_, i) => RecommendedPersonCard(profile: people[i]),
       ),
     );
   }
